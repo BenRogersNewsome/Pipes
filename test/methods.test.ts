@@ -1,5 +1,5 @@
 import { assertEquals } from "./test.deps.ts";
-import { GET } from "../methods.ts";
+import { GET } from "../pipes/methods.ts";
 
 Deno.test("GET route", () => {
   const handler = (_req: Request) => {

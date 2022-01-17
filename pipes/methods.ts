@@ -8,8 +8,8 @@ type HTTPMethod =
   | "TRACE"
   | "OPTIONS"
   | "CONNECT";
-type RequestOptions = {};
-type RequestHandler =
+export type RequestOptions = {};
+export type RequestHandler =
   | ((r: Request) => Response)
   | ((r: Request) => Promise<Response>);
 
@@ -20,7 +20,7 @@ export type Route = {
   init: RequestOptions;
 };
 
-const createRoute = (method: HTTPMethod) =>
+export const createRoute = (method: HTTPMethod) =>
   (
     pathname: string,
     handler: RequestHandler,
