@@ -6,14 +6,17 @@ Pipes is a lightweight, functional helper for creating a routed HTTP server.
 
 ```typescript
 import {
-  createServer,
   GET,
   POST,
   route,
-} from "https://deno.land/x/pipes/mod.ts";
+  pipe,
+  NextFunction
+} from "https://deno.land/x/plumber/mod.ts";
+
+import { serve } from "https://deno.land/std@0.121.0/http/server.ts";
 
 const routes = route(
-  GET("/index", (_req: Request) => {
+  GET("/index", (_req: Request, next: NextFunction) => {
     // Do something
     return new Response("Hey!");
   }),
@@ -23,7 +26,23 @@ const routes = route(
   }),
 );
 
-const serve = createServer(routes);
+const middleware = pipe(
+  (req: Request, next: NextFunction) => {
+    const res = next()
+    // Do something with res
+    return new Response()
+  }
+)
 
-serve({ port: 8080 }); // Now listening on port 8080
+
+serve(
+  pipe(
+    middleware,
+    routes
+  ),
+  {
+    port: 8080
+  }
+); // Now listening on port 8080
+
 ```
