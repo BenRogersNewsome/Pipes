@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
-import { GET, POST, route } from "../plumber/routes.ts";
-import { NextFunction, RequestHandler } from "../plumber/baseTypes.ts";
+import { GET, POST, route } from "../routes.ts";
+import { NextFunction, RequestHandler } from "../baseTypes.ts";
 
 const mockNextFunction: NextFunction = (ctx) => {
   return [new Response(), ctx];

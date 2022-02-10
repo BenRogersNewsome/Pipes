@@ -1,6 +1,6 @@
-import { NextFunction } from "../plumber/baseTypes.ts";
-import { join } from "../plumber/join.ts";
-import { GET, POST, route } from "../plumber/routes.ts";
+import { NextFunction } from "../baseTypes.ts";
+import { join } from "../join.ts";
+import { GET, POST, route } from "../routes.ts";
 import { assertEquals } from "./deps.ts";
 
 const mockNextFunction: NextFunction = (ctx) => {
