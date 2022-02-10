@@ -1,109 +1,226 @@
-import { assertEquals } from "./test.deps.ts";
-import { GET, POST, route, join } from "../plumber/routes.ts";
-import {RequestHandler} from '../plumber/baseTypes.ts'
+import { assertEquals } from "./deps.ts";
+import { GET, POST, route } from "../plumber/routes.ts";
+import { NextFunction, RequestHandler } from "../plumber/baseTypes.ts";
+
+const mockNextFunction: NextFunction = (ctx) => {
+  return [new Response(), ctx];
+};
+
+// ### Test routes ###
 
 Deno.test("GET route", () => {
-  const handler = (_req: Request) => {
-    return new Response("Oioi");
+  const handler: RequestHandler = (_req: Request, _next, _ctx) => {
+    return [new Response("Oioi"), {}];
   };
   const route = GET("/hello", handler);
 
-  assertEquals(route, {
-    pathname: "/hello",
+  // TODO
+});
+
+Deno.test("POST route", () => {
+  const handler: RequestHandler = (_req: Request, _next, _ctx) => {
+    return [new Response("Oioi"), {}];
+  };
+  const route = POST("/goodbye", handler);
+
+  // TODO
+});
+
+// ### Test route method ###
+
+Deno.test("route method correctly distinguishes methods", async () => {
+  const router = route(
+    GET("/req", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+    POST("/req", (_req, _next, _ctx) => {
+      return [new Response("Another success!"), {}];
+    }),
+  );
+
+  const getReq = new Request("https://example.com/req", { method: "GET" });
+  const postReq = new Request("https://example.com/req", { method: "POST" });
+
+  const [getRes, _getCtx] = await router(getReq, mockNextFunction, {});
+  const [postRes, _postCtx] = await router(postReq, mockNextFunction, {});
+
+  assertEquals(await getRes.text(), "Success!");
+  assertEquals(await postRes.text(), "Another success!");
+});
+
+Deno.test("route method correctly distinguishes pathnames", async () => {
+  const router = route(
+    GET("/req1", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+    GET("/req2", (_req, _next, _ctx) => {
+      return [new Response("Another success!"), {}];
+    }),
+  );
+
+  const req1 = new Request("https://example.com/req1", { method: "GET" });
+  const req2 = new Request("https://example.com/req2", { method: "GET" });
+
+  const [res1, _ctx1] = await router(req1, mockNextFunction, {});
+  const [res2, _ctx2] = await router(req2, mockNextFunction, {});
+
+  assertEquals(await res1.text(), "Success!");
+  assertEquals(await res2.text(), "Another success!");
+});
+
+Deno.test("route method returns 404 if no routes found", async () => {
+  const router = route(
+    GET("/req", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+  );
+
+  const req = new Request("https://example.com/different-req", {
     method: "GET",
-    handler: handler,
-    init: {},
+  });
+
+  const [res, _ctx] = await router(req, mockNextFunction, {});
+
+  assertEquals(res.status, 404);
+});
+
+Deno.test("route method returns 405 if it finds a route but at the wrong method", async () => {
+  const router = route(
+    GET("/req", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+  );
+
+  const req = new Request("https://example.com/req", { method: "POST" });
+
+  const [res, _ctx] = await router(req, mockNextFunction, {});
+
+  assertEquals(res.status, 405);
+});
+
+Deno.test("route method doesn't return 405 if multiple methods", async () => {
+  const router = route(
+    GET("/req", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+    POST("/req", (_req, _next, _ctx) => {
+      return [new Response("Success!"), {}];
+    }),
+  );
+
+  const req1 = new Request("https://example.com/req", { method: "POST" });
+  const [res1, _ctx1] = await router(req1, mockNextFunction, {});
+  assertEquals(res1.status, 200);
+
+  const req2 = new Request("https://example.com/req", { method: "POST" });
+  const [res2, _ctx2] = await router(req2, mockNextFunction, {});
+  assertEquals(res1.status, 200);
+});
+
+// ### Test loading of url params ###
+
+Deno.test("router loads url params into the context", async () => {
+  const router = route(
+    GET("/req/:name", (_req, _next, ctx) => {
+      return [new Response("Success!"), ctx];
+    }),
+  );
+
+  const req = new Request("https://example.com/req/plumber");
+
+  const [res, ctx] = await router(req, mockNextFunction, {});
+
+  assertEquals(await res.text(), "Success!");
+  assertEquals(ctx, {
+    params: {
+      name: "plumber",
+    },
   });
 });
 
-const routerAssertions = async (router: RequestHandler) => {
-  const req1 = new Request('https://example.com/get', {})
-
-  const res1: Response = await router(req1, () => {
-    return new Response('')
-  })
-
-  assertEquals(await res1.text(), 'Success!')
-
-  const req2 = new Request('https://example.com/post', {method: 'POST'})
-
-  const res2: Response = await router(req2, () => {
-    return new Response('')
-  })
-
-  assertEquals(await res2.text(), 'Another success!') 
-}
-
-Deno.test('route method', async () => {
+Deno.test("router matches everything if url is only parameter", async () => {
   const router = route(
-    GET('/get', () => {
-      return new Response('Success!')
+    GET(":name", (_req, _next, ctx) => {
+      return [new Response("Success!"), ctx];
     }),
-    POST('/post', () => {
-      return new Response('Another success!')
-    })
-  )
-  
-  await routerAssertions(router)
-})
+  );
 
-Deno.test('join', async () => {
+  const req = new Request("https://example.com/plumber");
+  const [res, ctx] = await router(req, mockNextFunction, {});
 
-  const router1 = route(
-    GET('/get', () => {
-      return new Response('Success!')
-    })
-  )
+  assertEquals(await res.text(), "Success!");
+  assertEquals(ctx, {
+    params: {
+      name: "plumber",
+    },
+  });
+});
 
-  const router2 = route(
-    POST('/post', () => {
-      return new Response('Another success!')
-    })
-  )
+// ### Test nesting routers
 
-  const router = join(router1, router2)
+Deno.test("Nested router pathfinding", async () => {
+  const innerRouter = route(
+    GET("/inner", (_req, _next, ctx) => {
+      return [new Response("Success!"), { ...ctx, inner: true }];
+    }),
+  );
 
-  await routerAssertions(router)
-})
+  const outerRouter = route(
+    GET("/outer/:name", innerRouter),
+  );
 
-Deno.test('route not found', async () => {
-  const router = route(
-    GET('/get', () => {
-      return new Response('Success!')
-    })
-  )
+  const req = new Request("https://example.com/outer/plumber/inner");
 
-  const req = new Request('https://example.com/get', {method: 'POST'})
+  const [res, ctx] = await outerRouter(req, mockNextFunction, {});
 
-  const res: Response = await router(req, () => {
-    return new Response('')
-  })
+  assertEquals(await res.text(), "Success!");
+  assertEquals(ctx, {
+    inner: true,
+    params: {
+      name: "plumber",
+    },
+  });
+});
 
-  assertEquals(res.status, 404)
-  assertEquals(res.body, null)
-})
+// Deno.test("join", async () => {
+//   const router1 = route(
+//     GET("/get", (_req, _next, _ctx) => {
+//       return [new Response("Success!"), {}];
+//     }),
+//   );
 
-Deno.test('route not found in join', async () => {
-  const router1 = route(
-    GET('/get', () => {
-      return new Response('Success!')
-    })
-  )
+//   const router2 = route(
+//     POST("/post", (_req, _next, _ctx) => {
+//       return [new Response("Another success!"), {}];
+//     }),
+//   );
 
-  const router2 = route(
-    POST('/post', () => {
-      return new Response('Another success!')
-    })
-  )
+//   const router = join(router1, router2);
 
-  const router = join(router1, router2)
+//   await routerAssertions(router);
+// });
 
-  const req = new Request('https://example.com/doesntExist', {method: 'GET'})
+// Deno.test("route not found in join", async () => {
+//   const router1 = route(
+//     GET("/get", (_req, _next, _ctx) => {
+//       return [new Response("Success!"), {}];
+//     }),
+//   );
 
-  const res: Response = await router(req, () => {
-    return new Response('')
-  })
+//   const router2 = route(
+//     POST("/post", (_req, _next, _ctx) => {
+//       return [new Response("Another success!"), {}];
+//     }),
+//   );
 
-  assertEquals(res.status, 404)
-  assertEquals(res.body, null)
-})
+//   const router = join(router1, router2);
+
+//   const req = new Request("https://example.com/doesntExist", { method: "GET" });
+
+//   const [res, _ctx] = await router(req, () => {
+//     return [new Response(""), {}]
+//   }, {});
+
+//   assertEquals(res.status, 404);
+//   assertEquals(res.body, null);
+// });
