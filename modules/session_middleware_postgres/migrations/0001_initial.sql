@@ -1,0 +1,4 @@
+CREATE TABLE session (
+    sid VARCHAR(36) PRIMARY KEY,
+    data JSONB NOT NULL
+);
