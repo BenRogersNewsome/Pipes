@@ -1,3 +1,3 @@
 export {sessionMiddleware} from './middleware.ts'
-export {Storage} from './storage.ts'
-export type {SessionData} from './types.ts'
+export type {SessionData, StorageFactory} from './types.ts'
+export {createSessionId} from './util.ts'

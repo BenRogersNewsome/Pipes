@@ -1,20 +1,24 @@
 import { RequestHandler } from "../../mod.ts";
-import { Storage } from './storage.ts'
+import { StorageFactory } from './types.ts'
 
 import {getSessionId, setSessionId} from './util.ts'
 import { SessionData } from './types.ts '
 
-export const sessionMiddleware: (storage: Storage) => RequestHandler = (storage: Storage) => async (req, next, context) => {
-    const sid = await getSessionId(req, storage)
-    const session = await storage.getSession(sid)
+export const sessionMiddleware: (storageFactory: StorageFactory) => RequestHandler = 
+    (storageFactory: StorageFactory) => async (req, next, context) => {
 
-    const [response, {session: new_session, ...new_context}] = await next({
-        session,
-        ...context
-    })
+        const storage = storageFactory()
+        const sid = getSessionId(req) || await storage.createSession()
 
-    storage.setSession(sid, new_session as SessionData || {})
-    setSessionId(response, sid)
+        const session = await storage.getSession(sid)
 
-    return [response, new_context]
-}
+        const [response, {session: new_session, ...new_context}] = await next({
+            session,
+            ...context
+        })
+
+        storage.setSession(sid, new_session as SessionData || {})
+        setSessionId(response, sid)
+
+        return [response, new_context]
+    }
