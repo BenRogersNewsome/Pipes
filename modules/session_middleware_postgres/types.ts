@@ -1,3 +1,3 @@
 export type PostgresStorageConfig = {
-    tableName: string
+    tableName?: string
 }
